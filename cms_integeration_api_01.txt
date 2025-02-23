@@ -1,0 +1,381 @@
+app.post('/cms_integeration_api_01', jsonParser, function(req,res)
+{
+    var stack = [];
+    function dashboard(callback)
+    {  
+        try
+        {
+            if(req.body.key == "browse")
+            {
+                try
+                {
+                    var from_date_01 =  undefined_datetime(req.body.from_date) ;
+                    var to_date_01 =  undefined_datetime(req.body.to_date) ;
+                    var from_date = moment(from_date_01).format('YYYY-MM-DD HH:mm:ss');
+                    var to_date = moment(to_date_01).format('YYYY-MM-DD') + " 23:59:59";
+                    var comp_id = undefined_numeric(req.body.comp_id);
+                    var filter_comp = "";
+                    if(comp_id > 0)
+                    {
+                        filter_comp = "AND cms_magiva_comp_id = '"+comp_id+"'";
+                    }
+
+                    var pass_limit_value = "";
+                    var limit = req.body.limit_value;
+    
+                    if(req.body.offset_value)
+                    {
+                        var offset = parseInt(req.body.offset_value);
+    
+                        if(req.body.limit_value)
+                        {
+                            pass_limit_value = "LIMIT "+limit+" OFFSET "+offset+" ";
+                        }
+                        else
+                        {
+                            pass_limit_value = "LIMIT 100 OFFSET "+offset+" ";
+                        }
+                    }
+                    else if(req.body.limit_value)
+                    {
+                        pass_limit_value = "LIMIT "+limit+" ";
+                    }
+                    
+                    var sql_1 = "SELECT tab1.*, cd.comp_name from (SELECT * FROM cms_integeration_table  WHERE cms_created_dt >= '"+from_date+"' AND cms_created_dt <= '"+to_date+"' "+filter_comp+" order by cms_id "+pass_limit_value+")as tab1 LEFT JOIN company_details as cd ON tab1.cms_magiva_comp_id = cd.comp_id;";
+    
+                    var sql_2 = "SELECT COUNT(*) as total_count FROM cms_integeration_table where cms_created_dt >= '"+from_date+"' AND cms_created_dt <= '"+to_date+"'  "+filter_comp+";"
+    
+                    var sql = sql_1 + sql_2;
+    
+                    console.log(sql);
+    
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : "No Records Found", error_message : err});
+                        }
+                        else if(result1[0].rows.length > 0)
+                        {
+                            var total_count = 0;
+                            if(result1[1].rows.length > 0)
+                            {
+                                total_count = result1[1].rows[0].total_count;
+                            }
+        
+                            res.json({user_stat : 1, cms_integeration_table : result1[0].rows, total_count : total_count})
+                        }
+                        else
+                        {
+                            res.json({user_stat : 1, cms_integeration_table : result1[0].rows, total_count : 0})
+                        }
+                    }); 
+                }
+                catch
+                {
+                    res.json({user_stat : 0,  message : err});  
+                }
+            }  
+        
+            if(req.body.key == "browse_01")
+            {
+                try
+                {
+                    var from_date_01 =  undefined_datetime(req.body.from_date) ;
+                    var to_date_01 =  undefined_datetime(req.body.to_date) ;
+                    var comp_id = undefined_numeric(req.body.comp_id);
+                    var from_date = moment(from_date_01).format('YYYY-MM-DD HH:mm:ss');
+                    var to_date = moment(to_date_01).format('YYYY-MM-DD 23:59:00');
+
+                    var pass_limit_value = "";
+                    var limit = req.body.limit_value;
+    
+                    if(req.body.offset_value)
+                    {
+                        var offset = parseInt(req.body.offset_value);
+    
+                        if(req.body.limit_value)
+                        {
+                            pass_limit_value = "LIMIT "+limit+" OFFSET "+offset+" ";
+                        }
+                        else
+                        {
+                            pass_limit_value = "LIMIT 100 OFFSET "+offset+" ";
+                        }
+                    }
+                    else if(req.body.limit_value)
+                    {
+                        pass_limit_value = "LIMIT "+limit+" ";
+                    }
+                    
+                    var sql1 = "SELECT * FROM fleet_cms_tbl  WHERE fcms_created_dt >= '"+from_date+"' AND fcms_created_dt <= '"+to_date+"' order by fcms_id "+pass_limit_value+" ;";
+
+                    var sql2 = "SELECT DISTINCT COUNT(fcms_id) AS total_count FROM fleet_cms_tbl  WHERE fcms_created_dt >= '"+from_date+"' AND fcms_created_dt <= '"+to_date+"'  "+pass_limit_value+" ; ";
+                    
+                    var sql = sql1 +sql2;
+                    console.log(sql);
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : err});
+                        }
+                        else if(result1[0].rows.length > 0)
+                        {
+                            var total_count = 0;
+                            if(result1[1].rows.length > 0)
+                            {
+                                total_count = result1[1].rows[0].total_count;
+                            }
+        
+                            res.json({user_stat : 1, cms_data : result1[0].rows, total_count : total_count})
+                        }
+                        else
+                        {
+                            res.json({user_stat : 1, cms_data : result1[0].rows, total_count : 0})
+                        }
+                    }); 
+                }
+                catch
+                {
+                    res.json({user_stat : 0,  message : err});  
+                }
+            }
+    
+            if(req.body.key == "add")
+            {
+                try
+                {
+                    var cvm_customer_id =  undefined_numeric(req.body.cvm_customer_id) ;
+                    var cvm_customer_name = security_validation(req.body.cvm_customer_name);
+                    var cvm_card_name = security_validation(req.body.cvm_card_name);
+                    var cvm_card_name_low = cvm_card_name.replace(/\s+/g, '').toLowerCase();
+                    var cvm_card_number = security_validation(req.body.cvm_card_number);
+                    var cvm_magiva_comp_id = undefined_numeric(req.body.cvm_magiva_comp_id);
+                    var cvm_magiva_vehicle_id = undefined_numeric(req.body.cvm_magiva_vehicle_id);
+                    var cvm_magiva_vehicle_no = security_validation(req.body.cvm_magiva_vehicle_no);
+                    var cvm_created_dt = moment().format('YYYY-MM-DD HH:mm:ss');
+                    var cvm_created_by = security_validation(req.body.username);
+                    var cvm_vehicle_imei = security_validation(req.body.cvm_vehicle_imei);
+        
+                    var cvm_update_ind = undefined_numeric(req.body.cvm_update_ind) ;
+                    var cms_id = undefined_numeric(req.body.cms_id);
+            
+                    var sql = "INSERT INTO cms_vehicle_mapping(cvm_customer_id,cvm_customer_name,cvm_card_name,cvm_card_number,cvm_magiva_comp_id,cvm_magiva_vehicle_id,cvm_magiva_vehicle_no,cvm_created_dt,cvm_created_by,cvm_vehicle_imei) values ('"+cvm_customer_id+"','"+cvm_customer_name+"','"+cvm_card_name+"','"+cvm_card_number+"','"+cvm_magiva_comp_id+"','"+cvm_magiva_vehicle_id+"','"+cvm_magiva_vehicle_no+"','"+cvm_created_dt+"','"+cvm_created_dt+"','"+cvm_vehicle_imei+"');";
+            
+                    console.log(sql);
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : err});
+                        }
+                        else
+                        {
+                            if(cvm_update_ind == 1)
+                            {
+                                var sql_1 = "UPDATE cms_integeration_table SET cms_magiva_comp_id = '"+cvm_magiva_comp_id+"', cms_magiva_vehicle_number = '"+cvm_magiva_vehicle_no+"', cms_magiva_success_ind = 1 WHERE lower(REPLACE (cms_card_name, ' ', '' )) = '"+cvm_card_name_low+"'; ";
+                            }
+                            else 
+                            {
+                                var sql_1 = "UPDATE cms_integeration_table SET  cms_magiva_comp_id = '"+cvm_magiva_comp_id+"', cms_magiva_vehicle_number = '"+cvm_magiva_vehicle_no+"', cms_magiva_success_ind = 1 WHERE cms_id = '"+cms_id+"'; ";
+                            }
+                            
+                            console.log(sql_1);
+    
+                            ps_sql.query(sql_1, function(err, result1)
+                            {               
+                                if(err)
+                                {                    
+                                    res.json({user_stat : 0,  message : err});
+                                }
+                                else
+                                {
+                                    res.json({user_stat : 1,  message : "CMS Mapping Added Successfully"});
+                                }
+                            });  
+                        }
+                    }); 
+                }
+                catch(err)
+                {
+                    res.json({user_stat : 0,  message : err});
+                }
+            }
+    
+            if(req.body.key == "update")
+            {
+                try
+                {
+                    var cvcm_id =  undefined_numeric(req.body.cvcm_id) ;                   
+                    var cvcm_magiva_comp_id = undefined_numeric(req.body.cvcm_magiva_comp_id);
+                    var cvcm_magiva_comp_name = undefined_text(req.body.cvcm_magiva_comp_name);                   
+                    var updated_dt = moment().format('YYYY-MM-DD HH:mm:ss');
+                    var updated_by = undefined_text(req.body.username);
+                    var cvcm_mapping_ind =  undefined_numeric(req.body.cvcm_mapping_ind);
+    
+                    var sql_1 = "UPDATE  cms_vendor_comp_mapping SET cvcm_magiva_comp_id = '"+cvcm_magiva_comp_id+"', cvcm_magiva_comp_name = '"+cvcm_magiva_comp_name+"', cvcm_updated_dt = '"+updated_dt+"', cvcm_updated_by = '"+updated_by+"' , cvcm_mapping_ind = '"+cvcm_mapping_ind+"'  WHERE cvcm_id = '"+cvcm_id+"';";
+    
+                    var sql_2 = "SELECT cvcm_customer_id from  cms_vendor_comp_mapping where cvcm_id = '"+cvcm_id+"';";
+    
+                    var sql = sql_1 + sql_2;
+    
+                    console.log(sql);
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : err});
+                        }
+                        else
+                        {
+                        var update_sql = ";";
+                        
+                        if(result1[1].rows.length > 0)
+                        {
+                            var customer_id = undefined_text(result1[1].rows[0].cvcm_customer_id);
+                            
+                            update_sql = "UPDATE cms_integeration_table SET cms_magiva_comp_id = '"+cvcm_magiva_comp_id+"' WHERE cms_customer_id = '"+customer_id+"'; "
+                        }
+    
+                        console.log("update_sql::",update_sql);
+    
+                            ps_sql.query(update_sql, function(err, result1)
+                            {               
+                                if(err)
+                                {                    
+                                    res.json({user_stat : 0,  message : err});
+                                }
+                                else
+                                {
+                                    res.json({user_stat : 1,  message : "CMS Vendor Company Mapped Successfully"});
+                                }
+                            });
+                        }
+                    }); 
+                }
+                catch
+                {
+                    res.json({user_stat : 0,  message : err});  
+                }
+            }  
+            
+            if(req.body.key == "refresh")
+            {
+                try
+                {
+                    var cms_id = undefined_numeric(req.body.cms_id);
+    
+                    var sql = "UPDATE cms_integeration_table SET cms_processing_ind = 0 WHERE cms_id = '"+cms_id+"';";
+    
+                    console.log(sql);
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : err});
+                        }
+                        else
+                        {
+                            res.json({user_stat : 1,  message: "Refresh Successfully"});
+                        }
+                    }); 
+                }
+                catch
+                {
+                    res.json({user_stat : 0,  message : err});  
+                }
+            }       
+                
+            if(req.body.key == "comp_browse")
+            {
+                try
+                {
+                    var cvcm_mapping_ftype = security_validation(req.body.cvcm_mapping_ftype);
+                    var cvcm_mapping_ind = [];
+                    var cvcm_mapping_ind = req.body.cvcm_mapping_ind;                    
+                    var filter_mapping = []; 
+                    filter_value = "";
+                    var sql_mapping = "";
+    
+                    if(cvcm_mapping_ftype == 'specific')
+                    {
+                        if(cvcm_mapping_ind.length > 0)
+                        {
+                            for(var i=0;i<cvcm_mapping_ind.length;i++)
+                            {
+                                var value = '\'' + cvcm_mapping_ind[i]+ '\'';
+                                filter_mapping.push(value);
+                            }
+                        }
+                        sql_mapping = "WHERE cvcm_mapping_ind IN ("+filter_mapping+") "
+                    }     
+    
+                    filter_value =  sql_mapping 
+    
+                    var pass_limit_value = "";
+                    var limit = req.body.limit_value;
+    
+                    if(req.body.offset_value)
+                    {
+                        var offset = parseInt(req.body.offset_value);
+    
+                        if(req.body.limit_value)
+                        {
+                            pass_limit_value = "LIMIT "+limit+" OFFSET "+offset+" ";
+                        }
+                        else
+                        {
+                            pass_limit_value = "LIMIT 100 OFFSET "+offset+" ";
+                        }
+                    }
+                    else if(req.body.limit_value)
+                    {
+                        pass_limit_value = "LIMIT "+limit+" ";
+                    }
+                    
+                    var sql = "SELECT * FROM cms_vendor_comp_mapping  "+filter_value+" order by cvcm_id "+pass_limit_value+";";                 
+    
+                    console.log(sql);
+                    ps_sql.query(sql, function(err, result1)
+                    {               
+                        if(err)
+                        {                    
+                            res.json({user_stat : 0,  message : err});
+                        }
+                        else
+                        {
+                            res.json({user_stat : 1,  cms_comp_mapping : result1.rows });
+                        }
+                    }); 
+                }
+                catch
+                {
+                    res.json({user_stat : 0,  message : []});  
+                }
+            }
+        }
+        catch(err)
+        {
+            res.json({user_stat : 0,  message : []});
+        }
+    }
+
+    stack.push(dashboard);
+    async.parallel(stack, function(err, result)
+    {
+        if(err)
+        {
+            res.json(err);
+        }
+        if(result[0]['cms_integeration'].length > 0)
+        {
+            res.json({user_stat : 1, fastag_integeration : result[0]['cms_integeration']});
+        }
+        else
+        {
+            res.json({user_stat : 0, fastag_integeration : []});
+        }
+    });
+    
+});
