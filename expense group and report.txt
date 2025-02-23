@@ -1,0 +1,611 @@
+app.post('/fleet_expense_group_api', jsonParser, function(req,res)
+{
+    var stack = [];
+    function expensegroup(callback)
+    { 
+        try
+        {
+            if(req.body.key == "add")
+            {
+                try
+                { 
+                    
+                    console.log(JSON.stringify(req.body));
+
+                    var fegt_group_comp_id = undefined_numeric(req.body.comp_id);
+                    var fegt_group_name = security_validation(req.body.fegt_group_name);
+                    var fegt_group_name_low = fegt_group_name.replace(/\s+/g, '').toLowerCase();
+                    var fegt_created_dt = moment().format('YYYY-MM-DD HH:mm:ss');
+                    var fegt_created_by = security_validation(req.body.fegt_created_by);
+
+                    if(typeof req.body.expense_group_type == "undefined")
+                    {
+                        var expense_group_type = [];
+                    }
+                    else 
+                    {
+                        var expense_group_type = req.body.expense_group_type;
+                    }
+
+                    var expense_group_type_len = req.body.expense_group_type.length;
+
+                    if (expense_group_type_len > 0)
+                    {
+                        for (var i=0; i < expense_group_type_len; i++)
+                        {
+                            expense_group_type[i].fgt_group_name = security_validation(expense_group_type[i].fgt_group_name);
+                            expense_group_type[i].fegt_group_name_id = security_validation(expense_group_type[i].fegt_group_name_id);
+                        }
+                    }
+
+
+                    var sql = "SELECT fegt_group_name FROM fleet_expense_group_tbl WHERE lower(REPLACE (fegt_group_name, ' ', '' )) = '"+fegt_group_name_low+"' AND fegt_group_comp_id = '"+fegt_group_comp_id+"';";
+
+                    console.log(sql);
+
+                    ps_sql.query(sql, function(err, result3)
+                    {
+                        try
+                        {
+                            if(err)
+                            {
+                                res.json({user_stat : 0,  message : err});
+                            }
+                            else if(result3.rows.length > 0)
+                            {
+                                res.json({user_stat : 0, message : "Group Name Already Exisits"});
+                            }
+                            else
+                            {
+                                var sql_insert1 = "INSERT INTO fleet_expense_group_tbl (fegt_group_comp_id, fegt_group_name, fegt_group_type, fegt_created_dt, fegt_created_by) VALUES('"+fegt_group_comp_id+"', '"+fegt_group_name+"', 'group', '"+fegt_created_dt+"', '"+fegt_created_by+"') returning fegt_group_id;";
+ 
+                                console.log("sql_insert1", sql_insert1);
+
+                                ps_sql.query(sql_insert1, function(err, result)
+                                {
+                                    try
+                                    {
+                                        if(err)
+                                        {
+                                            res.json({user_stat : 0,  message : err});
+                                        }
+                                        else
+                                        {
+                                            var fegt_group_id = undefined_numeric(result.rows[0].fegt_group_id);
+                                            console.log("fegt_group_id", fegt_group_id);
+
+                                            var sql_final = ";";
+                                            var sql_part1 = ";";
+                                            var sql_part2 = ";";
+
+                                            if(expense_group_type_len > 0)
+                                            {
+                                                sql_part2 = "('"+fegt_group_id+"', '"+fegt_group_comp_id+"','"+expense_group_type[0].fegt_group_name_id+"', '"+expense_group_type[0].fgt_group_name+"', 'item', '"+fegt_created_dt+"', '"+fegt_created_by+"')"
+
+                                                for (var i=1; i < expense_group_type_len; i++)
+                                                {
+                                                    sql_part2 = sql_part2 + " ," + "('"+fegt_group_id+"', '"+fegt_group_comp_id+"', '"+expense_group_type[i].fegt_group_name_id+"', '"+expense_group_type[i].fgt_group_name+"', 'item', '"+fegt_created_dt+"', '"+fegt_created_by+"')"
+                                                }
+
+                                                sql_part1 = "INSERT INTO fleet_expense_group_tbl (fegt_group_unique_id, fegt_group_comp_id,fegt_group_name_id, fegt_group_name, fegt_group_type, fegt_created_dt, fegt_created_by) VALUES ";
+
+                                                sql_final = sql_part1 + sql_part2;
+                                            }
+
+                                            console.log("sql_final",sql_final);
+
+                                            ps_sql.query(sql_final, function(err, result2)
+                                            {
+                                                try
+                                                {
+                                                    if(err)
+                                                    {
+                                                        res.json({user_stat : 0,  message : err});
+                                                    }
+                                                    else
+                                                    {
+                                                        res.json({user_stat : 1,  Message : "Expense Group Added Successfully"});
+                                                    }
+                                                }
+                                                catch(err)
+                                                {
+                                                    res.json({user_stat : 0,  message : err});
+                                                }
+                                            })
+                                        }
+                                    }
+                                    catch(err)
+                                    {
+                                        res.json({user_stat : 0,  message : err});
+                                    }
+                                })
+                            }
+                        }
+                        catch(err)
+                        {
+                            res.json({user_stat : 0,  message : err});
+                        }
+                    })
+                }
+                catch(err)
+                {
+                    console.log(err);
+                    res.json({user_stat : 0,  message : err});
+                }
+            }
+            else if(req.body.key == "update")
+            {
+                try
+                {
+                    console.log(JSON.stringify(req.body));
+
+                    var group_id = undefined_numeric(req.body.group_id);
+                    var fegt_group_comp_id = undefined_numeric(req.body.comp_id);
+                    var fegt_group_name = security_validation(req.body.fegt_group_name);
+                    var fegt_group_name_low = fegt_group_name.replace(/\s+/g, '').toLowerCase();
+                    var fegt_updated_dt = moment().format('YYYY-MM-DD HH:mm:ss');
+                    var fegt_updated_by = security_validation(req.body.fegt_updated_by);
+                    var fegt_group_ind = undefined_numeric(req.body.fegt_group_ind);
+                    var fegt_group_name_id = security_validation(req.body.fegt_group_name_id);
+                    var fgt_group_name = security_validation(req.body.fgt_group_name);
+
+
+                    var sql = "SELECT fegt_group_name FROM fleet_expense_group_tbl WHERE lower(REPLACE (fegt_group_name, ' ', '' )) ='"+fegt_group_name_low+"' and fegt_group_id != '"+group_id+"' and fegt_group_comp_id = '"+fegt_group_comp_id+"';";
+
+                    console.log(sql);
+
+                    ps_sql.query(sql, function(err, result3)
+                    {
+                        try
+                        {
+                            if(err)
+                            {
+                                res.json({user_stat : 0,  message : err});
+                            }
+                            else if(result3.rows.length > 0)
+                            {
+                                res.json({user_stat : 0, message : "Group Name Already Exisits"});
+                            }
+                            else
+                            {
+                                var sql_update = "UPDATE fleet_expense_group_tbl SET fegt_group_name = '"+fegt_group_name+"', fegt_group_type = 'group', fegt_updated_dt = '"+fegt_updated_dt+"', fegt_updated_by = '"+fegt_updated_by+"', fegt_group_ind = '"+fegt_group_ind+"' WHERE fegt_group_id = '"+group_id+"' AND fegt_group_comp_id = '"+fegt_group_comp_id+"' ;";
+
+                                console.log("sql_update", sql_update);
+
+                                ps_sql.query(sql_update, function(err, result)
+                                {
+                                    try
+                                    {
+                                        if(err)
+                                        {
+                                            res.json({user_stat : 0,  message : err});
+                                        }
+                                        else
+                                        {
+                                            var sql1 = "SELECT fegt_group_id from fleet_expense_group_tbl WHERE fegt_group_unique_id = '"+group_id+"' AND fegt_group_comp_id = '"+fegt_group_comp_id+"';";
+
+                                            console.log("Sql1:::", sql1);
+
+                                            ps_sql.query(sql1, function(err, result1)
+                                            {
+                                                try
+                                                {
+                                                    if(err)
+                                                    {
+                                                        res.json({user_stat : 0,  message : err});
+                                                    }
+                                                    else
+                                                    {
+                                                        var expense_group_type = [];
+                                                        var expense_group_type_sql = ";";
+                                                        expense_group_type = req.body.expense_group_type;
+
+                                                        var update_expense_group_type = expense_group_type.filter(entry1 => result1.rows.some(entry2 => (entry1.fegt_group_id == entry2.fegt_group_id)));
+                                                        
+                                                        var insert_expense_group_type = expense_group_type.filter(entry1 => ! result1.rows.some(entry2 => (entry1.fegt_group_id == entry2.fegt_group_id)));
+                                                        
+                                                        var delete_expense_group_type = result1.rows.filter(entry1 => ! expense_group_type.some(entry2 => (entry1.fegt_group_id == entry2.fegt_group_id)));
+
+                                                        console.log("update",update_expense_group_type);
+                                                        console.log("insert",insert_expense_group_type);
+                                                        console.log("delete",delete_expense_group_type);
+
+                                                        for(var i=0; i < update_expense_group_type.length; i++)
+                                                        {
+
+                                                            var fgt_group_name = security_validation(update_expense_group_type[i].fgt_group_name);
+                                                            var fegt_group_id = undefined_numeric(update_expense_group_type[i].fegt_group_id);
+                                                            var fegt_group_name_id = security_validation(update_expense_group_type[i].fegt_group_name_id);
+
+                                                            var sql = "UPDATE fleet_expense_group_tbl SET fegt_group_name = '"+fgt_group_name+"', fegt_group_type = 'item', fegt_updated_dt = '"+fegt_updated_dt+"', fegt_updated_by = '"+fegt_updated_by+"', fegt_group_name_id = '"+fegt_group_name_id+"' WHERE fegt_group_id = '"+fegt_group_id+"' AND fegt_group_comp_id = '"+fegt_group_comp_id+"';"
+                                                
+                                                            expense_group_type_sql = expense_group_type_sql + sql;
+                                                        }
+
+                                                        for(var i=0; i < insert_expense_group_type.length; i++)
+                                                        {
+                                                            var fegt_group_type = undefined_numeric(insert_expense_group_type[i].fegt_group_type);
+                                                            var fgt_group_name = security_validation(insert_expense_group_type[i].fgt_group_name);
+                                                            var fegt_group_name_id = security_validation(insert_expense_group_type[i].fegt_group_name_id);
+
+                                                            var sql = "INSERT INTO fleet_expense_group_tbl (fegt_group_unique_id, fegt_group_comp_id, fegt_group_name, fegt_created_dt, fegt_group_type, fegt_created_by, fegt_group_name_id) VALUES('"+group_id+"', '"+fegt_group_comp_id+"', '"+fgt_group_name+"', '"+fegt_updated_dt+"', 'item', '"+fegt_updated_by+"', '"+fegt_group_name_id+"') returning fegt_group_id;";
+
+                                                            expense_group_type_sql = expense_group_type_sql + sql;
+                                                            
+                                                        }
+
+                                                        for(var i=0; i < delete_expense_group_type.length; i++)
+                                                        {
+                                                            var fegt_group_id = undefined_numeric(delete_expense_group_type[i].fegt_group_id);
+                            
+                                                            var sql = "DELETE FROM fleet_expense_group_tbl WHERE fegt_group_id= '"+fegt_group_id+"' AND fegt_group_comp_id= '"+fegt_group_comp_id+"';";
+                            
+                                                            expense_group_type_sql = expense_group_type_sql + sql;
+                                                        }
+                                                        console.log("expense_group_type_sql:::", expense_group_type_sql);
+
+                                                        ps_sql.query(expense_group_type_sql, function(err, result2)
+                                                        {
+                                                            try
+                                                            {
+                                                                if(err)
+                                                                {
+                                                                    res.json({user_stat : 0,  message : err});
+                                                                    console.log("Not Update");
+                                                                }
+                                                                else
+                                                                {
+                                                                    res.json({user_stat : 1, message : "Expense Group Updated Successfully"});
+                                                                }
+                                                            }
+                                                            catch(err)
+                                                            {
+                                                                res.json({user_stat : 0,  message : err});
+                                                                console.log("err1",err);
+                                                            }
+                                                        })
+                                                    }
+                                                }
+                                                catch(err)
+                                                {
+                                                    res.json({user_stat : 0,  message : err});
+                                                    console.log("err1",err);
+                                                }
+                                            });
+                                        }
+                                    }
+                                    catch(err)
+                                    {
+                                        res.json({user_stat : 0,  message : err});
+                                    }
+                                });
+                            }
+                        }
+                        catch(err)
+                        {
+                            res.json({user_stat : 0,  message : err});
+                        }
+                    }) 
+                }
+                catch(err)
+                {
+                    res.json({user_stat : 0,  message : err});
+                }
+            }   
+            else if(req.body.key == "browse")
+            {
+                try
+                {
+
+                    var group_id = undefined_numeric(req.body.group_id);
+                    var comp_id = undefined_numeric(req.body.comp_id);
+
+                    var sql = "SELECT * FROM fleet_expense_group_tbl WHERE fegt_group_comp_id = '"+comp_id+"' AND fegt_group_type = 'group';";
+
+                    console.log("SQL:::", sql)
+                    ps_sql.query(sql, function(err, result)
+                    {               
+                        try
+                        {
+                            if(err)
+                            {                    
+                                res.json({user_stat : 0, message : err});
+                            }
+                            else
+                            {
+                                res.json({user_stat : 1, expense_group :result.rows})
+                            }     
+                        }
+                        catch(err)
+                        {
+                            res.json({user_stat : 0,  message : err});
+                        }              
+                    });
+                }
+                catch(err)
+                {
+                    res.json({user_stat : 0,  message : err});
+                }
+            }  
+            else if(req.body.key == "view") 
+            {
+                try
+                {
+                    var group_id = undefined_numeric(req.body.group_id);
+                    var comp_id = undefined_numeric(req.body.comp_id);
+
+                    var sql_1 = "SELECT fegt_group_id, fegt_group_comp_id, fegt_group_name, fegt_group_type, fegt_group_ind FROM fleet_expense_group_tbl WHERE fegt_group_id = '"+group_id+"' AND fegt_group_comp_id = '"+comp_id+"' AND fegt_group_type = 'group';";
+
+                    var sql_2 = "SELECT fegt_group_id, fegt_group_name_id, fegt_group_name, fegt_group_type  FROM fleet_expense_group_tbl WHERE fegt_group_unique_id = '"+group_id+"' AND fegt_group_comp_id = '"+comp_id+"' AND fegt_group_type = 'item';";
+
+                    var sql = sql_1 + sql_2;
+
+                    console.log("SQL:::", sql)
+                    ps_sql.query(sql, function(err, result)
+                    {
+                        try
+                        {
+                            if(err)
+                            {
+                                res.json({user_stat : 0, message : err});
+                            }
+                            else
+                            {
+                                res.json({user_stat : 1, expense_group_base : result[0].rows, expense_group_sub : result[1].rows});
+                            }
+                        }
+                        catch(err)
+                        {
+                            res.json({user_stat : 0, message : err});
+                        }
+                    })
+                }
+                catch(err)
+                {
+                    res.json({user_stat : 0,  message : err});
+                }
+            }
+            else if(req.body.key == "erp_remarks")
+            {
+                try
+                {
+                    var comp_id = undefined_numeric(req.body.comp_id);
+
+                    if(typeof req.body.erp_remarks == "undefined")
+                    {
+                        var erp_remarks = [];
+                    }
+                    else 
+                    {
+                        var erp_remarks = req.body.erp_remarks;
+                    }
+
+                    var erp_remarks_len = req.body.erp_remarks.length;
+
+                    if (erp_remarks_len > 0)
+                    {
+                        for (var i=0; i < erp_remarks_len; i++)
+                        {
+                            erp_remarks[i].ftrip_id = security_validation(erp_remarks[i].ftrip_id);
+                            erp_remarks[i].ftrip_erp_remarks = security_validation(erp_remarks[i].ftrip_erp_remarks);
+                        }
+                    }
+                    var sql_update = ";";
+
+                    if(erp_remarks_len > 0)
+                    {
+
+                        sql_update = "UPDATE fleet_trip_details SET ftrip_erp_remarks = '"+erp_remarks[0].ftrip_erp_remarks+"' WHERE ftrip_id = '"+erp_remarks[0].ftrip_id+"' AND ftrip_comp_id = '"+comp_id+"';";
+
+                        for (var i=1; i < erp_remarks_len; i++)
+                        {
+                            sql_update = sql_update + "UPDATE fleet_trip_details SET ftrip_erp_remarks = '"+erp_remarks[i].ftrip_erp_remarks+"' WHERE ftrip_id = '"+erp_remarks[i].ftrip_id+"' AND ftrip_comp_id = '"+comp_id+"';";
+                        }
+                    }
+                    console.log(sql_update);
+
+                    ps_sql.query(sql_update, function(err, result)
+                    {
+                        try
+                        {
+                            if(err)
+                            {
+                                res.json({user_stat : 0,  message : err});
+                                console.log("Not Update");
+                            }
+                            else
+                            {
+                                res.json({user_stat : 1, message : "remarks updated successfully"});
+                            }
+                        }
+                        catch(err)
+                        {
+                            res.json({user_stat : 0,  message : err});
+                            console.log("err1",err);
+                        }
+                    })
+                }
+                catch(err)
+                {
+                    res.json({user_stat : 0,  message : err});
+                }
+            }
+        }
+        catch(err)
+        {
+            res.json({user_stat : 0,  message : err});
+        }
+    }
+    stack.push(expensegroup);
+    async.parallel(stack, function(err, result)
+    {
+        if(err)
+        {
+            res.json(err);
+        }
+        if(result[0]['expensegroup'].length > 0)
+        {
+            res.json({user_stat : 1, expensegroup : result[0]['expensegroup']});
+        }
+        else
+        {
+            res.json({user_stat : 0});
+        }
+    });
+});
+
+
+
+//trip_summary_report
+
+
+
+app.post('/trip_summary_report', jsonParser, function(req,res)
+{
+    try
+    {
+        var from_date =req.body.from_date;
+        from_date = moment(from_date).format('YYYY-MM-DD 00:00:00');
+        var to_date = req.body.to_date;
+        to_date = moment(to_date).format('YYYY-MM-DD 23:59:59');
+
+        var ftrip_vehicle_id_ftype = req.body.ftrip_vehicle_id_ftype;
+        var final_status = [];
+        var ftrip_vehicle_id = req.body.ftrip_vehicle_id;
+        var sql_status_1 = "";
+
+        if(ftrip_vehicle_id_ftype == 'specific')
+        {
+            for(var i =0;i< ftrip_vehicle_id.length;i++)
+            {
+                var value = '\'' + ftrip_vehicle_id[i]+ '\'';                       
+                final_status.push(value);
+            }  
+            sql_status_1 = " AND ftd.ftrip_vehicle_id IN("+final_status+")";  
+        }
+
+        var pass_limit_value = "";
+        var limit = req.body.limit;
+
+        if(req.body.offset)
+        {
+            var offset = parseInt(req.body.offset);
+
+            if(req.body.limit)
+            {
+                pass_limit_value = "LIMIT "+limit+" OFFSET "+offset+" ";
+            }
+            else
+            {
+                pass_limit_value = "LIMIT 100 OFFSET "+offset+" ";
+            }
+        }
+        
+        else if(req.body.limit)
+        {
+            pass_limit_value = "LIMIT "+limit+" ";
+        }
+
+        var sql_1 = "SELECT ftd.ftrip_id AS trip_id, ftd.ftrip_start_date, ftd.frip_end_date, ftd.ftrip_vehicle_number, ftd.ftrip_vehicle_id, ftd.ftrip_driver_name, ftd.ftrip_secondary_driver, fdm.fdm_driver_id AS primary_driver_code, fldm.fdm_driver_id AS secondary_driver_code, ftd.ftrip_route, ftd.ftrip_route_remark, ftd.ftrip_start_odameter_value, ftd.ftrip_end_odameter_value , (CAST(ftd.ftrip_end_odameter_value AS DECIMAL) - CAST(ftd.ftrip_start_odameter_value AS DECIMAL)) AS total_running_km, ftd.ftrip_total_beta_amount, ffrd.frd_actual_ltrs, (CAST(ftd.ftrip_end_odameter_value AS DECIMAL) - CAST(ftd.ftrip_start_odameter_value AS DECIMAL)) / ffrd.frd_actual_ltrs AS avg_mileage, SUM(CASE WHEN ftedp.ftedp_payment_type = 'cash' THEN ftedp.ftedp_total_amount ELSE 0 END) AS total_cash_amount,  SUM(CASE WHEN ftedp.ftedp_payment_type = 'deduction' THEN ftedp.ftedp_total_amount ELSE 0 END) AS total_deduction_amount, SUM(CASE WHEN ftedp.ftedp_payment_type = 'advance' THEN ftedp.ftedp_total_amount ELSE 0 END) AS total_advance_amount, ftd.ftrip_total_beta_amount AS total_cost, ftd.ftrip_total_beta_amount AS balance_to_pay, ftd.ftrip_erp_remarks FROM fleet_trip_details AS ftd LEFT JOIN fleet_driver_master AS fdm ON ftd.ftrip_driver_id = fdm.fdm_id LEFT JOIN fleet_driver_master AS fldm ON ftd.ftrip_secondary_driver_id = fldm.fdm_id LEFT JOIN fleet_fuel_refill_drop_tbl AS ffrd ON ftd.ftrip_id = ffrd.frd_trip_id LEFT JOIN fleet_trip_expense_driver_payment_tbl AS ftedp ON ftd.ftrip_id = ftedp.ftedp_trip_id WHERE ftd.ftrip_start_date >= '"+from_date+"' AND ftd.frip_end_date <= '"+to_date+"' AND ffrd.frd_actual_ltrs > 0 AND ftd.ftrip_comp_id ='22' "+sql_status_1+" GROUP BY ftd.ftrip_id, ftd.ftrip_start_date, ftd.frip_end_date, ftd.ftrip_vehicle_number, ftd.ftrip_vehicle_id, ftd.ftrip_driver_name, ftd.ftrip_secondary_driver, fdm.fdm_driver_id, fldm.fdm_driver_id, ftd.ftrip_route, ftd.ftrip_route_remark, ftd.ftrip_start_odameter_value, ftd.ftrip_end_odameter_value, ftd.ftrip_total_beta_amount, ffrd.frd_actual_ltrs, ftd.ftrip_erp_remarks "+pass_limit_value+";";
+
+        var sql_2 = "SELECT g.fegt_group_name, i.fegt_group_name AS fegt_group_item_name, COALESCE(SUM(fte.fte_total_amount), 0) AS total_amount FROM fleet_trip_details ftd JOIN fleet_trip_expense_tbl fte ON ftd.ftrip_id = fte.fte_trip_id JOIN fleet_expense_group_tbl i ON fte.fte_expense_type = i.fegt_group_name AND i.fegt_group_type = 'item' JOIN fleet_expense_group_tbl g ON i.fegt_group_unique_id = g.fegt_group_id AND g.fegt_group_type = 'group' WHERE ftd.ftrip_start_date >= '"+from_date+"' AND ftd.frip_end_date <= '"+to_date+"' AND fte_expense_load_id = 0  AND ftd.ftrip_comp_id ='22' "+sql_status_1+" GROUP BY g.fegt_group_name, i.fegt_group_name ORDER BY g.fegt_group_name "+pass_limit_value+";";
+        
+        var sql = sql_1 + sql_2;
+
+        console.log("SQL:::", sql);
+
+        ps_sql.query(sql, function(err, result)
+        {
+            try
+            {
+                if(err)
+                {
+                    res.json({user_stat : 0, message : err});
+                }
+                else if(result[0].rows.length > 0)
+                {
+
+                    console.log("enter");
+                    var final_result = [];
+
+                    for (var i = 0; i < result[0].rows.length; i++) {
+                    var tripDetails = {
+                        "trip_id": result[0].rows[i].trip_id,
+                        "ftrip_start_date": result[0].rows[i].ftrip_start_date,
+                        "frip_end_date": result[0].rows[i].frip_end_date,
+                        "ftrip_vehicle_number": result[0].rows[i].ftrip_vehicle_number,
+                        "ftrip_driver_name": result[0].rows[i].ftrip_driver_name,
+                        "ftrip_secondary_driver": result[0].rows[i].ftrip_secondary_driver,
+                        "primary_driver_code": result[0].rows[i].primary_driver_code,
+                        "secondary_driver_code": result[0].rows[i].secondary_driver_code,
+                        "ftrip_route": result[0].rows[i].ftrip_route,
+                        "ftrip_Enroute": result[0].rows[i].ftrip_route_remark,
+                        "ftrip_start_odameter_value": result[0].rows[i].ftrip_start_odameter_value,
+                        "ftrip_end_odameter_value": result[0].rows[i].ftrip_end_odameter_value,
+                        "total_running_km": result[0].rows[i].total_running_km,
+                        "ftrip_total_beta_amount": parseFloat(result[0].rows[i].ftrip_total_beta_amount || 0),
+                        "frd_actual_ltrs": result[0].rows[i].frd_actual_ltrs,
+                        "avg_mileage": result[0].rows[i].avg_mileage,
+                        "total_deduction_amount": result[0].rows[i].total_deduction_amount,
+                        "total_advance_amount": result[0].rows[i].total_advance_amount,
+                        "total_cost": 0,
+                        "balance_to_pay": 0,
+                        "ftrip_erp_remarks":result[0].rows[i].ftrip_erp_remarks,
+                        "summary_expense": []
+                    };
+
+                    final_result.push(tripDetails);
+                    }
+
+                    var group = [];
+                    var amount = [];
+
+                    for (var i = 0; i < result[1].rows.length; i++) 
+                    {
+                        group.push(result[1].rows[i].fegt_group_item_name);
+                        amount.push(parseFloat(result[1].rows[i].total_amount || 0));
+                    }
+
+                    var addDynamicFields = (final_result, group, amount) => {
+                    return final_result.map(item => {
+                        let expenseObj = {};
+                        let total_expense = 0;
+
+                        for (let i = 0; i < group.length; i++) 
+                        {
+                            expenseObj[group[i]] = amount[i];
+                            total_expense += amount[i];
+                        }
+                        
+                        item.summary_expense.push(expenseObj);
+                        item.total_cost = item.ftrip_total_beta_amount + total_expense;
+
+                        item.balance_to_pay = item.total_cost - parseFloat(item.total_deduction_amount || 0) + parseFloat(item.total_advance_amount || 0);
+                        return item;
+                    });
+                    };
+
+                    var updated_result = addDynamicFields(final_result, group, amount);
+
+                    console.log(updated_result);
+
+                    res.json({ user_stat: 1, expense_group: result[1].rows, final_result: final_result });
+
+                }
+                else
+                {
+                    res.json({user_stat : 1, trip_summary_report : result[0].rows, expense_group : result[1].rows, final_result : final_result, group: group});
+                }
+            }
+            catch(err)
+            {
+                console.log(err);
+                res.json({user_stat : 0, message : err});
+            }
+        })
+    }
+    catch(err)
+    {
+        res.json({user_stat : 0, message : err});
+    }
+});
